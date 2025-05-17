@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"log"
 	"net"
 	"net/http"
@@ -14,14 +15,25 @@ import (
 )
 
 func main() {
+
+	grpcPort := os.Getenv("PORT")
+	if grpcPort == "" {
+		grpcPort = "50051"
+	}
+
+	metricsPort := os.Getenv("METRICS_PORT")
+	if metricsPort == "" {
+		metricsPort = "2112"
+	}
+
 	go func() {
 		metrics.Init()
 		http.Handle("/metrics", promhttp.Handler())
-		log.Println("Prometheus metrics available at :2112/metrics")
-		log.Fatal(http.ListenAndServe(":2112", nil))
+		log.Println("Prometheus metrics available at :%s/metrics", metricsPort)
+		log.Fatal(http.ListenAndServe(":"+metricsPort, nil))
 	}()
 
-	lis, err := net.Listen("tcp", ":50051")
+	lis, err := net.Listen("tcp", ":"+grpcPort)
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
@@ -29,7 +41,7 @@ func main() {
 	grpcServer := grpc.NewServer()
 	pb.RegisterRateLimiterServer(grpcServer, api.NewRateLimiterServer())
 
-	log.Println("gRPC Rate Limiter server is running on port 50051...")
+	log.Println("gRPC Rate Limiter server is running on port %s...\n", grpcPort)
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve: %v", err)
 	}
