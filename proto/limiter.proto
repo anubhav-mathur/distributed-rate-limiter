@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package limiter;
+
+option go_package = "/proto;limiter";
+
+service RateLimiter {
+  rpc AllowRequest (RequestInput) returns (RequestOutput);
+  rpc GetUsage (UsageInput) returns (UsageOutput);
+}
+
+message RequestInput {
+  string user_id = 1;
+  string path = 2;
+}
+
+message RequestOutput {
+  bool allowed = 1;
+  string reason = 2;
+}
+
+message UsageInput {
+  string user_id = 1;
+}
+
+message UsageOutput {
+  int32 requests_allowed = 1;
+  int32 requests_used = 2;
+}

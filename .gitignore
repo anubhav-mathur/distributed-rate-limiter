@@ -1,0 +1,15 @@
+# Go files
+*.exe
+*.out
+*.test
+
+# Vendor
+/vendor/
+
+# IDE/editor stuff
+.idea/
+.vscode/
+*.swp
+
+# OS junk
+.DS_Store
