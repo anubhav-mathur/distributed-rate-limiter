@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"github.com/anubhav-mathur/distributed-rate-limiter/internal/store"
+	"github.com/anubhav-mathur/distributed-rate-limiter/internal/metrics"
 	pb "github.com/anubhav-mathur/distributed-rate-limiter/proto"
 )
 
@@ -30,16 +31,21 @@ func (s *RateLimiterServer) AllowRequest(ctx context.Context, req *pb.RequestInp
 		return nil, err
 	}
 	if ok {
+		metrics.RequestsTotal.WithLabelValues(req.UserId, "allowed").Inc()
 		return &pb.RequestOutput{Allowed: true, Reason: "Request allowed"}, nil
 	}
+	metrics.RequestsTotal.WithLabelValues(req.UserId, "denied").Inc()
 	return &pb.RequestOutput{Allowed: false, Reason: "Rate limit exceeded"}, nil
 }
 
-// func (s *RateLimiterServer) GetUsage(ctx context.Context, req *pb.UsageInput) (*pb.UsageOutput, error) {
-// 	bucket := s.getBucket(req.UserId)
-// 	used, allowed := bucket.Usage()
-// 	return &pb.UsageOutput{
-// 		RequestsUsed:    int32(used),
-// 		RequestsAllowed: int32(allowed),
-// 	}, nil
-// }
+func (s *RateLimiterServer) GetUsage(ctx context.Context, req *pb.UsageInput) (*pb.UsageOutput, error) {
+	used, allowed, err := s.limiter.Usage(ctx, req.UserId)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.UsageOutput{
+		RequestsUsed:    int32(used),
+		RequestsAllowed: int32(allowed),
+	}, nil
+}
+

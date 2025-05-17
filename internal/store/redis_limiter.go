@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anubhav-mathur/distributed-rate-limiter/internal/metrics"
+
 	"github.com/redis/go-redis/v9"
 )
 
@@ -59,14 +61,36 @@ func (rl *RedisLimiter) Allow(ctx context.Context, userID string) (bool, error) 
 		end
 	`)
 
-	res, err := script.Run(ctx, rl.client, []string{key},
-		now,
-		rl.capacity,
-		int64(rl.fillInterval.Seconds()),
-	).Result()
+	start := time.Now()
+	res, err := script.Run(ctx, rl.client, []string{key}, now, rl.capacity, int64(rl.fillInterval.Seconds())).Result()
+	metrics.RedisLatency.Observe(time.Since(start).Seconds())
+
 
 	if err != nil {
 		return false, err
 	}
 	return res.(int64) == 1, nil
 }
+
+func (rl *RedisLimiter) Usage(ctx context.Context, userID string) (used int, allowed int, err error) {
+	key := fmt.Sprintf("rl:%s", userID)
+
+	data, err := rl.client.HMGet(ctx, key, "tokens").Result()
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// Redis returns []interface{}, safely extract
+	tokensLeft := rl.capacity
+	if data[0] != nil {
+		if tokens, ok := data[0].(string); ok {
+			var parsed int
+			fmt.Sscanf(tokens, "%d", &parsed)
+			tokensLeft = parsed
+		}
+	}
+
+	used = rl.capacity - tokensLeft
+	return used, rl.capacity, nil
+}
+
