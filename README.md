@@ -127,6 +127,10 @@ grpcurl example:
 | histogram_quantile(0.95, rate(redis_latency_seconds_bucket[1m])) | Redis latency (95th percentile) |
 | sum by(user) (rate(rate_limiter_requests_total[1m])) | Requests per user |
 
+### Observability
+![Grafana queries](docs/grafana.png)
+![Prometheus](docs/prometheus.png)
+
 ---
 
 ## Implementation Notes
